@@ -9,14 +9,16 @@ let masterIsConnected = false
 const masterShape = {width:1, height: 1}
 const masterRect = {x0:0, y0:0, x1:0, y1:0}
 let lastAddedImage = ''
-let masterPeerId = ''
+const peerIds = new Set()
 
 wss.on('connection', (socket, request)=> {
     console.log('got connection request')
     if(connections.has(socket)){
         console.log('duplicate connection request')
     }
-    connections.set(socket, {uuid: uuidv4(), role: null, shape:null})     
+    const peerid = peerIds.size === 0 ? 'master' : uuidv4()
+    connections.set(socket, {uuid: peerid , role: null, shape:null})
+    peerIds.add(peerid)     
 
     socket.on('message', (message)=> {
         let decoded
@@ -69,13 +71,9 @@ wss.on('connection', (socket, request)=> {
             case 'get-master-peer-id':{
                 socket.send(JSON.stringify({
                     event: 'get-master-peer-id',
-                    data: { id: masterPeerId}
+                    data: { ids: [...peerIds.keys()].filter(v=>v!==clientInfo.uuid), myPeerId: clientInfo.uuid}
                     //data: translateRect(masterRect, masterShape, clientInfo.shape)
                 }))
-                break
-            }
-            case 'set-master-peer-id':{
-                masterPeerId = decoded.id
                 break
             }
             case 'move-end': {
@@ -229,13 +227,15 @@ wss.on('connection', (socket, request)=> {
             masterRect.x1 = 0
             masterRect.y0 = 0
             masterRect.y1 = 0
-            masterPeerId = ''
-        } 
+            peerIds.delete('master')
+        }
+        peerIds.delete(info.uuid) 
         connections.delete(socket)  
     })
 
     socket.on('error', (err)=>{
         console.log(err)
+        // handle this situation correctly
     })
 })
 
