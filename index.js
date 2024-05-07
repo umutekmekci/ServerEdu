@@ -1,11 +1,19 @@
 import express from 'express'
+import path from 'path'
 import { wss as wss1 } from './wsutils.js'
 import { WebSocketServer } from 'ws';
 import { ExpressPeerServer } from 'peer'
 import cors from 'cors'
 
+
+const __dirname = import.meta.dirname
 const app = express();
-app.use(cors()); 
+app.use(cors());
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', async(req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 const port = 7072
 const server = app.listen(port, () => {
