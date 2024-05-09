@@ -1,7 +1,6 @@
 import express from 'express'
 import path from 'path'
 import https from 'https'
-import http from 'http'
 import fs from 'fs'
 import { wss as wss1 } from './wsutils.js'
 import { WebSocketServer } from 'ws';
@@ -14,13 +13,12 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-//const options = {
-//    key: fs.readFileSync(path.join(__dirname, "key.pem")),
-//    cert: fs.readFileSync(path.join(__dirname, "cert.pem")),
-//  };
+const options = {
+    key: fs.readFileSync(path.join(__dirname, "key.pem")),
+    cert: fs.readFileSync(path.join(__dirname, "cert.pem")),
+};
 
-//const server = https.createServer(options, app);
-const server = http.createServer(app);
+const server = https.createServer(options, app);
 
 app.get('/', async(req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
