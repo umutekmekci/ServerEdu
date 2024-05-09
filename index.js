@@ -1,5 +1,6 @@
 import express from 'express'
 import path from 'path'
+import https from 'https'
 import { wss as wss1 } from './wsutils.js'
 import { WebSocketServer } from 'ws';
 import { ExpressPeerServer } from 'peer'
@@ -11,12 +12,19 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const options = {
+    key: fs.readFileSync(path.join(__dirname, "localhost-key.pem")),
+    cert: fs.readFileSync(path.join(__dirname, "localhost.pem")),
+  };
+
+const server = https.createServer(options, app);
+
 app.get('/', async(req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const port = 7072
-const server = app.listen(port, () => {
+server.listen(port, () => {
     console.log(`server listening on port ${port}`)
 })
 
@@ -36,8 +44,6 @@ const peerServer = ExpressPeerServer(server, {
 app.use("/peerjs", peerServer);
 
 
-
-
 server.on("upgrade", (request, socket, head) => {
     console.log(request.url)
     if(request.url.includes('ws')){
@@ -51,8 +57,3 @@ server.on("upgrade", (request, socket, head) => {
         
     }
   });
-
-
-
-
-
