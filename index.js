@@ -1,7 +1,6 @@
 import express from 'express'
 import path from 'path'
-import https from 'https'
-import http from 'https'
+import http from 'http'
 import fs from 'fs'
 import { wss as wss1 } from './wsutils.js'
 import { WebSocketServer } from 'ws';
