@@ -19,7 +19,7 @@ const server = https.createServer(options, app);
 */
 const server = http.createServer(app);
 
-app.get('/.well-known/pki-validation/', async(req, res) => {
+app.get('/.well-known/pki-validation/431B5564CDAD42D3F97D0D762C5EF490.txt', async(req, res) => {
     res.sendFile(path.join(__dirname, 'public', '431B5564CDAD42D3F97D0D762C5EF490.txt'));
 });
 
