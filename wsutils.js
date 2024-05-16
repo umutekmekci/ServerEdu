@@ -227,7 +227,6 @@ wss.on('connection', (socket, request)=> {
             masterRect.x1 = 0
             masterRect.y0 = 0
             masterRect.y1 = 0
-            peerIds.delete('master')
         }
         peerIds.delete(info.uuid) 
         connections.delete(socket)  
