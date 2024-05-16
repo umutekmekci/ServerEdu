@@ -202,6 +202,18 @@ wss.on('connection', (socket, request)=> {
                 }
                 break
             }
+            case 'heart-beat': {
+                for(let [conn, other] of connections){
+                    if(other.uuid !== clientInfo.uuid){
+                        console.log(`sending heart-beat to ${other.uuid}`)
+                        conn.send(JSON.stringify({
+                            event: 'heart-beat',
+                            data: null
+                        }))
+                    }
+                }
+                break
+            }
             default:{
                 for(let [conn, other] of connections){
                     if(other.uuid !== clientInfo.uuid){
