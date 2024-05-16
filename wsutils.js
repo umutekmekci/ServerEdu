@@ -77,11 +77,21 @@ wss.on('connection', (socket, request)=> {
                 break
             }
             case 'move-end': {
+                /*
                 for(let [conn, other] of connections){
                     if(other.uuid !== clientInfo.uuid){
                         console.log(`sending data to ${other.uuid}`)
                         conn.send(JSON.stringify({
                             event: 'move-end',
+                        }))
+                    }
+                } */
+                for(let [conn, other] of connections){
+                    if(other.uuid !== clientInfo.uuid){
+                        console.log(`sending data to ${other.uuid}`)
+                        conn.send(JSON.stringify({
+                            event: decoded.event,
+                            data: translateBatch(decoded.data, clientInfo.shape, other.shape) 
                         }))
                     }
                 }
@@ -256,6 +266,24 @@ function translate(coords, sender, receiver){
     }
 
     return {x: (receiver.width / sender.width) * coords.x, y: (receiver.height / sender.height) * coords.y}
+}
+
+function translateBatch(coords, sender, receiver){
+    if(sender === null || sender.width === null || receiver === null || receiver.width === null){
+        return []
+    }
+    const X = coords.pointerCoordsX
+    const Y = coords.pointerCoordsY
+    const L = X.length
+    const scaleX = (receiver.width / sender.width)
+    const scaleY = (receiver.height / sender.height)
+    const coordsX = new Array[L]
+    const coordsY = new Array[L]
+    for(let i=0; i<X.length; i++){
+        resultX.push(X[i]*scaleX)
+        resultY.push(Y[i]*scaleY)
+    }
+    return {coordsX, coordsY}
 }
 
 function translateRect(coords, sender, receiver){
