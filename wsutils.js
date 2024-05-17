@@ -28,7 +28,7 @@ wss.on('connection', (socket, request)=> {
             decoded = {event: 'add-image', data: ''}
         }
         const clientInfo = connections.get(socket)
-        if(decoded.event === 'move-start' || decoded.event === 'move-end' || decoded.event === 'role' || decoded.event === 'resize'){
+        if(decoded.event === 'move-start' || decoded.event === 'role' || decoded.event === 'resize'){
             console.log(`got data from ${clientInfo.uuid} role: ${clientInfo.role}`)
             console.log(decoded)
         }
@@ -98,12 +98,22 @@ wss.on('connection', (socket, request)=> {
                 break
             }
             case 'move-end-img': {
+                /*
                 for(let [conn, other] of connections){
                     if(other.uuid !== clientInfo.uuid){
                         console.log(`sending data to ${other.uuid}`)
                         conn.send(JSON.stringify({
                             event: 'move-end-img',
                             data: decoded.data
+                        }))
+                    }
+                } */
+                for(let [conn, other] of connections){
+                    if(other.uuid !== clientInfo.uuid){
+                        console.log(`sending data to ${other.uuid}`)
+                        conn.send(JSON.stringify({
+                            event: decoded.event,
+                            data: {...translateBatch(decoded.data, clientInfo.shape, other.shape), uuid:decoded.data.uuid} 
                         }))
                     }
                 }
@@ -210,6 +220,7 @@ wss.on('connection', (socket, request)=> {
                         }))
                     }
                 }
+                console.log('prohibited message type')
                 break
             }
             case 'heart-beat': {
@@ -277,11 +288,11 @@ function translateBatch(coords, sender, receiver){
     const L = X.length
     const scaleX = (receiver.width / sender.width)
     const scaleY = (receiver.height / sender.height)
-    const coordsX = new Array[L]
-    const coordsY = new Array[L]
+    const coordsX = new Array(L)
+    const coordsY = new Array(L)
     for(let i=0; i<X.length; i++){
-        resultX.push(X[i]*scaleX)
-        resultY.push(Y[i]*scaleY)
+        coordsX[i] = (X[i]*scaleX)
+        coordsY[i] = (Y[i]*scaleY)
     }
     return {coordsX, coordsY}
 }
