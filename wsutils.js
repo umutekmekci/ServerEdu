@@ -76,6 +76,18 @@ wss.on('connection', (socket, request)=> {
                 }))
                 break
             }
+            case 'remote-access-permission': {
+                for(let [conn, other] of connections){
+                    if(other.uuid !== clientInfo.uuid){
+                        console.log(`sending data to ${other.uuid}`)
+                        conn.send(JSON.stringify({
+                            event: 'remote-access-permission',
+                            data: { canEdit: decoded.data.canEdit }
+                        }))
+                    }
+                }
+                break
+            }
             case 'move-end': {
                 /*
                 for(let [conn, other] of connections){
