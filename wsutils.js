@@ -1,259 +1,182 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import { loadImage as createImageBitmap } from 'canvas'
-
 const wss = new WebSocketServer({ noServer: true, path: '/ws' });
 
 const connections = new Map()
 let masterIsConnected = false
 const masterShape = {width:1, height: 1}
-const masterRect = {x0:0, y0:0, x1:0, y1:0}
-let lastAddedImage = ''
-const peerIds = new Set()
+const MESSAGECODE = ['move-end', 'client-move-end', 'move-end-img', 'client-move-end-img', 'add-image', 'client-add-image', 'sync', 'translate-all-objects', 'updatexy', 'update-border', 'pen-transfer', 'image-transfer', 'scale-factor']
+
+let SyncTarget = null
+
+function isMessageJson(message){
+    return message.slice(0,1)[0] === 123
+}
 
 wss.on('connection', (socket, request)=> {
-    console.log('got connection request')
     if(connections.has(socket)){
         console.log('duplicate connection request')
     }
-    const peerid = peerIds.size === 0 ? 'master' : uuidv4()
-    connections.set(socket, {uuid: peerid , role: null, shape:null})
-    peerIds.add(peerid)     
+    connections.set(socket, {uuid: uuidv4(), role: null, shape:null})   
+    console.log(`got connection request from ${connections.get(socket).uuid}`)  
 
     socket.on('message', (message)=> {
-        let decoded
-        try{
-            decoded = JSON.parse(message)
-        } catch(ex){
-            decoded = {event: 'add-image', data: ''}
-        }
         const clientInfo = connections.get(socket)
-        if(decoded.event === 'move-start' || decoded.event === 'role' || decoded.event === 'resize'){
+        let decoded
+        if(isMessageJson(message)){
+            try{
+                decoded = JSON.parse(message)
+            } catch(ex){
+                console.log(ex)
+                decoded = {event: 'invalid'}
+            }
+        } else {
+            const messageCode = new Uint32Array(message.slice(0,4))[0]
+            const event = MESSAGECODE[messageCode]
+            decoded = {event}
+        }
+
+        if(decoded.event === 'move-start' || decoded.event === 'master-role' || decoded.event === 'resize'){
             console.log(`got data from ${clientInfo.uuid} role: ${clientInfo.role}`)
             console.log(decoded)
         }
 
         switch(decoded.event){
-            case 'role': {
+            case 'master-role': {
                 if(connections.size === 1){
-                    socket.send(JSON.stringify({
-                        event: 'role',
-                        data: {role: 'master'}
-                    }))
                     clientInfo.role = 'master'
                     masterIsConnected = true
-                } else {
+                    masterShape.width = decoded.data.width
+                    masterShape.height = decoded.data.height
                     socket.send(JSON.stringify({
-                        event: 'role',
-                        data: {role: 'slave'} 
+                        event: 'master-role',
+                        data: { success: true }
                     }))
-                    clientInfo.role = 'slave'
                 }
                 break
             }
-            case 'resize':{
+            case 'heart-beat':
+            case 'invalid': {
+                console.log('heart-beat')
+                break
+            }
+            case 'viewbox-coord':{
                 clientInfo.shape = {...decoded.data}
                 if(clientInfo.role === 'master'){
                     masterShape.width = decoded.data.width
                     masterShape.height = decoded.data.height
                 }
-                if(clientInfo.role === 'slave'){
-                    const transform = translate({x: masterRect.x0, y: masterRect.y0}, masterShape, clientInfo.shape)
+                if(clientInfo.role === 'slave'){  //this condition does not happen, in the 'role' event shape is sent to slave
                     socket.send(JSON.stringify({
-                        event: 'shift-initial',
-                        data: { x0: transform.x, y0: transform.y }
-                        //data: translateRect(masterRect, masterShape, clientInfo.shape)
+                        event: 'viewbox-coord',
+                        data: { ...masterShape }
                     }))
                 }
-                console.log(`${clientInfo.uuid} ${clientInfo.role} changed its dimensions to w:${clientInfo.shape.width}, h:${clientInfo.shape.height}`)
+                console.log(`${clientInfo.uuid} ${clientInfo.role} set its viewbox dimensions to w:${clientInfo.shape.width}, h:${clientInfo.shape.height}`)
                 break
             }
-            case 'get-master-peer-id':{
-                socket.send(JSON.stringify({
-                    event: 'get-master-peer-id',
-                    data: { ids: [...peerIds.keys()].filter(v=>v!==clientInfo.uuid), myPeerId: clientInfo.uuid}
-                    //data: translateRect(masterRect, masterShape, clientInfo.shape)
-                }))
-                break
-            }
-            case 'remote-access-permission': {
+            case 'scale-factor':
+            case 'image-transfer':
+            case 'pen-transfer':
+            case 'update-border':
+            case 'updatexy':
+            case 'translate-all-objects':
+            case 'move-end':
+            case 'client-move-end':
+            case 'move-end-img':
+            case 'client-move-end-img':
+            case 'add-image':{
                 for(let [conn, other] of connections){
                     if(other.uuid !== clientInfo.uuid){
                         console.log(`sending data to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: 'remote-access-permission',
-                            data: { canEdit: decoded.data.canEdit }
-                        }))
+                        conn.send(message)
                     }
                 }
                 break
             }
-            case 'move-end': {
-                /*
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: 'move-end',
-                        }))
-                    }
-                } */
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: decoded.event,
-                            data: translateBatch(decoded.data, clientInfo.shape, other.shape) 
-                        }))
-                    }
-                }
-                break
-            }
-            case 'move-end-img': {
-                /*
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: 'move-end-img',
-                            data: decoded.data
-                        }))
-                    }
-                } */
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: decoded.event,
-                            data: {...translateBatch(decoded.data, clientInfo.shape, other.shape), uuid:decoded.data.uuid} 
-                        }))
-                    }
-                }
-                break
-            }
-            case 'shift': {
-                // only master can send shift event
-                masterRect.x0 = decoded.data.x0
-                masterRect.x1 = decoded.data.x1
-                masterRect.y0 = decoded.data.y0
-                masterRect.y1 = decoded.data.y1
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        const newData = translateRect(decoded.data, clientInfo.shape, other.shape)
-                        console.log(`old shift: x0: ${masterRect.x0}, y0: ${masterRect.y0}`)
-                        console.log(`new shift: x0: ${newData.x0}, y0: ${newData.y0}`)
-                        conn.send(JSON.stringify({
-                            event: decoded.event,
-                            data: newData
-                        }))
-                    }
-                }
-                break
-            }
-            case 'pre-add-image': {
-                lastAddedImage = decoded.data.uuid
-                break
-            }
-            case 'add-image': {
-                //const {buffer, width, height} = decoded.data
-                //const shift = decoded.shift
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        createImageBitmap(message).then(originalBmp => {
-                            const { width, height } = originalBmp;
-                            console.log(`width: ${width}, height: ${height}`)
-                            const {x: newWidth, y: newHeight} = translate({x: width, y: height}, clientInfo.shape, other.shape)
-                            const scaleX = other.shape.width / clientInfo.shape.width
-                            const scaleY = other.shape.height / clientInfo.shape.height
-                            console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
+            case 'client-sync':
+            {
+                if(SyncTarget == null)
+                {
+                    clientInfo.role = 'slave'
+                    console.log('got client-sync')
+                    SyncTarget = clientInfo.uuid
+                    for(let [conn, other] of connections){
+                        if(other.role === 'master'){
                             conn.send(JSON.stringify({
-                                event:'pre-add-image',
-                                data: {width: newWidth, height: newHeight, scaleX, scaleY, uuid: lastAddedImage}
+                                event:'client-sync',
+                                data: ''
                             }))
-                            conn.send(message)
-                        })
+                        }
+                    }
+                }
+                else
+                {
+                    socket.send(JSON.stringify(
+                    {
+                        event:'master-is-in-sync-state',
+                        data: ''
+                    }))
+                }
+                break
+            }
+            case 'sync':
+            {
+                console.log('sending sync')
+                for(let [conn, other] of connections){
+                    if(other.uuid === SyncTarget){
+                        console.log(`sending data to client ${other.uuid}`)
+                        conn.send(message)
+                        break
                     }
                 }
                 break
             }
-            case 'drag-image': {
-                const dirX = decoded.data.dirX
-                const dirY = decoded.data.dirY
-                const uuid = decoded.data.uuid
+            case 'sync-end':
+            {
+                console.log(`sending ${decoded.event}`)
                 for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        const {x: newDirX, y: newDirY} = translate({x: dirX, y: dirY}, clientInfo.shape, other.shape)
-                        console.log(`dirX: ${dirX}, dirY:${dirY}, newDirX: ${newDirX}, newDirY: ${newDirY}`)
+                    if(other.uuid === SyncTarget){
+                        console.log(`sending data to ${other.uuid}`)
                         conn.send(JSON.stringify({
-                            event:decoded.event,
-                            data: {dirX: newDirX, dirY: newDirY, uuid}
+                            event:'sync-end',
+                            data:''
                         }))
                     }
                 }
+                SyncTarget = null
                 break
             }
-            case 'resize-image': {
-                const dirX = decoded.data.dirX
-                const dirY = decoded.data.dirY
-                const uuid = decoded.data.uuid
+            case 'client-add-image': {
                 for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        const {x: newDirX, y: newDirY} = translate({x: dirX, y: dirY}, clientInfo.shape, other.shape)
-                        console.log(`dirX: ${dirX}, dirY:${dirY}, newDirX: ${newDirX}, newDirY: ${newDirY}`)
-                        conn.send(JSON.stringify({
-                            event:decoded.event,
-                            data: {dirX: newDirX, dirY: newDirY, uuid}
-                        }))
+                    if(other.role === 'master'){
+                        conn.send(message)
                     }
                 }
-                break
+                break 
             }
-            case 'move-start-img': {
+            case 'shift': 
+            case 'drag-image': 
+            case 'grid': 
+            case 'remote-access-permission':{
                 for(let [conn, other] of connections){
                     if(other.uuid !== clientInfo.uuid){
                         console.log(`sending data to ${other.uuid}`)
                         conn.send(JSON.stringify({
-                            event: 'move-start-img',
-                            data: {...translate(decoded.data, clientInfo.shape, other.shape), uuid: decoded.data.uuid }
-                        }))
-                    }
-                }
-                break
-            }
-            case 'move-img': {
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: 'move-img',
-                            data: {...translate(decoded.data, clientInfo.shape, other.shape), uuid: decoded.data.uuid }
-                        }))
-                    }
-                }
-                console.log('prohibited message type')
-                break
-            }
-            case 'heart-beat': {
-                for(let [conn, other] of connections){
-                    if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending heart-beat to ${other.uuid}`)
-                        conn.send(JSON.stringify({
-                            event: 'heart-beat',
-                            data: null
+                            event: decoded.event,
+                            data: decoded.data
                         }))
                     }
                 }
                 break
             }
             default:{
+                console.log('default message handler')
                 for(let [conn, other] of connections){
                     if(other.uuid !== clientInfo.uuid){
-                        console.log(`sending data to ${other.uuid}`)
                         conn.send(JSON.stringify({
                             event: decoded.event,
-                            data: translate(decoded.data, clientInfo.shape, other.shape) 
+                            data: decoded.data
                         }))
                     }
                 }
@@ -268,56 +191,13 @@ wss.on('connection', (socket, request)=> {
             masterIsConnected = false
             masterShape.width = 1
             masterShape.height = 1
-            masterRect.x0 = 0
-            masterRect.x1 = 0
-            masterRect.y0 = 0
-            masterRect.y1 = 0
-        }
-        peerIds.delete(info.uuid) 
+        } 
         connections.delete(socket)  
     })
 
     socket.on('error', (err)=>{
         console.log(err)
-        // handle this situation correctly
     })
 })
 
-function translate(coords, sender, receiver){
-    if(sender === null || sender.width === null || receiver === null || receiver.width === null){
-        return coords
-    }
-
-    return {x: (receiver.width / sender.width) * coords.x, y: (receiver.height / sender.height) * coords.y}
-}
-
-function translateBatch(coords, sender, receiver){
-    if(sender === null || sender.width === null || receiver === null || receiver.width === null){
-        return []
-    }
-    const X = coords.pointerCoordsX
-    const Y = coords.pointerCoordsY
-    const L = X.length
-    const scaleX = (receiver.width / sender.width)
-    const scaleY = (receiver.height / sender.height)
-    const coordsX = new Array(L)
-    const coordsY = new Array(L)
-    for(let i=0; i<X.length; i++){
-        coordsX[i] = (X[i]*scaleX)
-        coordsY[i] = (Y[i]*scaleY)
-    }
-    return {coordsX, coordsY}
-}
-
-function translateRect(coords, sender, receiver){
-    if(sender === null || sender.width === null || receiver === null || receiver.width === null){
-        return coords
-    }
-    const scaleX = (receiver.width / sender.width)
-    const scaleY = (receiver.height / sender.height)
-    console.log(`scaleX: ${scaleX}, scaleY: ${scaleY}`)
-    return {x0: scaleX * coords.x0, y0: scaleY * coords.y0, x1: scaleX * coords.x1, y1: scaleY * coords.y1}
-}
-
-console.log(`websocket server running at 7072...`)
 export {wss}

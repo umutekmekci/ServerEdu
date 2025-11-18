@@ -1,5 +1,5 @@
 {
-  "name": "subctserver",
+  "name": "eduserversingle",
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -10,10 +10,8 @@
   "author": "umit ekmekci",
   "license": "ISC",
   "dependencies": {
-    "canvas": "^2.11.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "peer": "^1.0.2",
     "uuid": "^9.0.1",
     "ws": "^8.16.0"
   }

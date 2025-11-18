@@ -1,10 +1,10 @@
 import express from 'express'
 import path from 'path'
 import http from 'http'
-import fs from 'fs'
+//import fs from 'fs'
 import { wss as wss1 } from './wsutils.js'
-import { WebSocketServer } from 'ws';
-import { ExpressPeerServer } from 'peer'
+//import { WebSocketServer } from 'ws';
+//import { ExpressPeerServer } from 'peer'
 import cors from 'cors'
 
 
@@ -26,26 +26,17 @@ const server = http.createServer(app);
 app.get('/', async(req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.get('/tutor', async(req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'tutor', 'index.html'));
+});
+app.get('/student', async(req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'student', 'index.html'));
+});
 
-const port = 7072
+const port = 443
 server.listen(port, () => {
     console.log(`server listening on port ${port}`)
 })
-
-let wss2
-function createWebSocketServer(options){
-    wss2 =  new WebSocketServer({ noServer: true, path: '/myapp/peerjs' });
-    return wss2
-}
-
-const peerServer = ExpressPeerServer(server, {
-	path: "/myapp",
-    debug: true,
-    port: 7072,
-    createWebSocketServer
-});
-
-app.use("/peerjs", peerServer);
 
 
 server.on("upgrade", (request, socket, head) => {
@@ -55,9 +46,6 @@ server.on("upgrade", (request, socket, head) => {
             wss1.emit("connection", websocket, request);
         });
     } else {
-        wss2.handleUpgrade(request, socket, head, (websocket) => {
-            wss2.emit("connection", websocket, request);
-        });
-        
+        console.log(`unexpected url for websocket connection: ${request.url}`)
     }
   });

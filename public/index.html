@@ -1,39 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metric Tool</title>
-    <script type="module" crossorigin src="/assets/index-6a9b75a8.js"></script>
-    <link rel="stylesheet" href="/assets/index-a54aa39b.css">
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EDU</title>
   </head>
-  <body>
-    <div id="app"></div>
-    
-    <script>
-      const registerServiceWorker = async () => {
-        if ("serviceWorker" in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.register("/sw.js", {
-                    scope: "/",
-                });
-
-                if (registration.installing) {
-                    console.log("Service worker installing");
-                } else if (registration.waiting) {
-                    console.log("Service worker installed");
-                } else if (registration.active) {
-                    console.log("Service worker active");
-                }
-
-            } catch (error) {
-                console.error(`Registration failed with ${error}`);
-            }
-        }
-      };
-
-      //registerServiceWorker();
-    </script>
+  <body class="">
+    <a class="" href="/tutor">Tutor</a>
+    <a class="" href="/student">Student</a>
   </body>
 </html>
+<!--
+take file name as input
+-->
