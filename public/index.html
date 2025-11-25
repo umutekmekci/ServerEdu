@@ -2,13 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/pwa.json" />
     <title>EDU</title>
   </head>
   <body class="">
-    <a class="" href="/tutor">Tutor</a>
-    <a class="" href="/student">Student</a>
+    <a class="" href="/tutor/">Tutor</a>
+    <a class="" href="/student/">Student</a>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js");
+      }
+    </script>
   </body>
 </html>
 <!--

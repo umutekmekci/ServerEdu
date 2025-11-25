@@ -1,0 +1,20 @@
+{
+  "name": "Tutor's app",
+  "short_name": "Edu",
+  "description": "Provides tools for efficient tutoring",
+  "start_url": "/",
+  "theme_color": "#eeffee",
+  "background_color": "#eeffee",
+  "display": "fullscreen",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "48x48"
+    },
+    {
+      "src": "icons/test_512.png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ]
+}
