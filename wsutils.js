@@ -5,7 +5,7 @@ const wss = new WebSocketServer({ noServer: true, path: '/ws' });
 const connections = new Map()
 let masterIsConnected = false
 const masterShape = {width:1, height: 1}
-const MESSAGECODE = ['move-end', 'client-move-end', 'move-end-img', 'client-move-end-img', 'add-image', 'client-add-image', 'sync', 'translate-all-objects', 'updatexy', 'update-border', 'pen-transfer', 'image-transfer', 'scale-factor', 'widget']
+const MESSAGECODE = ['move-end', 'client-move-end', 'move-end-img', 'client-move-end-img', 'add-image', 'client-add-image', 'sync', 'translate-all-objects', 'updatexy', 'update-border', 'pen-transfer', 'image-transfer', 'scale-factor', 'widget', 'action']
 
 let SyncTarget = null
 
@@ -75,6 +75,7 @@ wss.on('connection', (socket, request)=> {
                 console.log(`${clientInfo.uuid} ${clientInfo.role} set its viewbox dimensions to w:${clientInfo.shape.width}, h:${clientInfo.shape.height}`)
                 break
             }
+            case 'action':
             case 'widget':
             case 'scale-factor':
             case 'image-transfer':
