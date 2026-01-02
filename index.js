@@ -33,7 +33,7 @@ app.get('/student', async(req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'student', 'index.html'));
 });
 
-const port = 443
+const port = 8080
 server.listen(port, () => {
     console.log(`server listening on port ${port}`)
 })
